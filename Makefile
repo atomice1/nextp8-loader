@@ -3,6 +3,7 @@
 TOOLCHAIN ?= m68k-elf-
 CC = $(TOOLCHAIN)gcc
 OBJCOPY = $(TOOLCHAIN)objcopy
+OBJDUMP = $(TOOLCHAIN)objdump
 
 ifndef NEXTP8_BSP
 $(error Set NEXTP8_BSP to the path to the nextp8 BSP)
@@ -15,13 +16,16 @@ RAM_LDFLAGS += -T$(NEXTP8_BSP)/nextp8-ram.ld
 CFLAGS += -Wall $(CPPFLAGS) -g
 ROM_CFLAGS += -DROM=1
 
-all: build/loader.bin build/loader.mem
+all: build/loader.bin build/loader.mem build/loader.lst
 
 build/%.bin: build/%
 	$(OBJCOPY) -O binary $< $@
 
 build/%.mem: build/%.bin
 	od -v -w2 -Ax -tx2 --endian=big $< | cut -d' ' -f2 -s > $@
+
+build/%.lst: build/%
+	$(OBJDUMP) -d -S $< > $@
 
 build/loader: build/loader.o
 	mkdir -p build
