@@ -81,6 +81,7 @@ static void report_error(void)
 int main(void)
 {
     char *load_ptr = (char *)LOAD_ADDRESS;
+    _set_postcode(10);
     _clear_screen(_DARK_BLUE);
     draw_logo(LOGO_LEFT, LOGO_TOP);
     draw_rect(PROGRESS_BAR_LEFT,
