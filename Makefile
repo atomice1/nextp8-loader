@@ -15,18 +15,17 @@ RAM_LDFLAGS += -T$(NEXTP8_BSP)/nextp8-ram.ld
 CFLAGS += -Wall $(CPPFLAGS) -g
 ROM_CFLAGS += -DROM=1
 
-all: build/loader.bin build/hello.bin
+all: build/loader.bin build/loader.mem
 
 build/%.bin: build/%
 	$(OBJCOPY) -O binary $< $@
 
+build/%.mem: build/%.bin
+	od -v -w2 -Ax -tx2 --endian=big $< | cut -d' ' -f2 -s > $@
+
 build/loader: build/loader.o
 	mkdir -p build
 	$(CC) $(CFLAGS) $(ROM_CFLAGS) $(LDFLAGS) $(ROM_LDFLAGS) $^ -o $@ $(LIBS) -Wl,-Map=$@.map
-
-build/hello: build/hello.o
-	mkdir -p build
-	$(CC) $(CFLAGS) $(LDFLAGS) $(RAM_LDFLAGS) $^ -o $@ $(LIBS)
 
 build/%.o: src/%.c
 	mkdir -p build
