@@ -9,6 +9,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include "timestamp_macros.h"
+#include "version_macros.h"
+
+#define HW_API_VERSION 0
+#define API_VERSION    0
+#define MAJOR_VERSION  0
+#define MINOR_VERSION  1
+#define PATCH_VERSION  0
 
 #define LOAD_ADDRESS 0x20000
 #define BLOCK_SIZE 4096
@@ -30,6 +38,9 @@ uint8_t logo[LOGO_HEIGHT][LOGO_WIDTH / 2] = {
     {0x80, 0x80, 0xa0, 0x00, 0xb0, 0xb0, 0x0c, 0x00, 0x70, 0x00, 0x70, 0x70},
     {0x80, 0x80, 0xaa, 0xa0, 0xb0, 0xb0, 0x0c, 0x00, 0x70, 0x00, 0x77, 0x70}
 };
+
+static const uint32_t loader_version = _MAKE_VERSION(API_VERSION, MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
+static const uint32_t loader_timestamp = _TIMESTAMP;
 
 static void draw_logo(int x, int y)
 {
@@ -81,6 +92,10 @@ static void report_error(void)
 int main(void)
 {
     char *load_ptr = (char *)LOAD_ADDRESS;
+    uint32_t hw_timestamp = *(uint32_t *)_BUILD_TIMESTAMP_HI;
+    uint32_t hw_version = *(uint32_t *)_HW_VERSION_HI;
+    if (_EXTRACT_API(hw_version) != HW_API_VERSION)
+        _fatal_error("Incompatible hardware version");
     _set_postcode(10);
     _clear_screen(_DARK_BLUE);
     draw_logo(LOGO_LEFT, LOGO_TOP);
@@ -88,6 +103,15 @@ int main(void)
               PROGRESS_BAR_TOP,
               PROGRESS_BAR_WIDTH,
               PROGRESS_BAR_HEIGHT);
+    char hw_version_string[50];
+    char bsp_version_string[50];
+    char loader_version_string[50];
+    _format_version(hw_version_string, sizeof(hw_version_string), "HW", hw_version, hw_timestamp);
+    _format_version(bsp_version_string, sizeof(bsp_version_string), "BSP", _bsp_version, _bsp_timestamp);
+    _format_version(loader_version_string, sizeof(loader_version_string), "Loader", loader_version, loader_timestamp);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 3, hw_version_string);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 2, bsp_version_string);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 1, loader_version_string);
     _flip();
     int fd = open(FILENAME, O_RDONLY);
     if (fd == -1) {
@@ -129,6 +153,11 @@ int main(void)
     }
     _clear_screen(_DARK_BLUE);
     _flip();
+    memcpy((char *) _CONFIG_BASE_RAM, (char *) _CONFIG_BASE_ROM, 256);
+    struct _loader_data *data = (struct _loader_data *) _LOADER_DATA;
+    data->loader_version = loader_version;
+    data->loader_timestamp = loader_timestamp;
+    data->entry_point = LOAD_ADDRESS;
     __asm__("jmp (%0)"
             :
             : "a" (LOAD_ADDRESS));
