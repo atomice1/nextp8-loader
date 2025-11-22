@@ -20,6 +20,7 @@
 
 #define LOAD_ADDRESS 0x20000
 #define BLOCK_SIZE 4096
+#define DEFAULT_CORE_PATH "/machines/NEXTP8"
 #define FILENAME "nextp8.bin"
 
 #define PROGRESS_BAR_WIDTH (_SCREEN_WIDTH * 3 / 4)
@@ -82,7 +83,7 @@ static void fill_rect(int x, int y, int w, int h)
 static void report_error(void)
 {
   if (errno == ENOENT)
-    _fatal_error(FILENAME ": file not found");
+    _fatal_error(DEFAULT_CORE_PATH "/" FILENAME ": file not found");
   else if (errno == EIO)
     _fatal_error("IO error");
   else
@@ -153,8 +154,14 @@ int main(void)
     _set_postcode(15);
     char path[64];
     memcpy(path, "0:", 2);
-    size_t core_path_len = strnlen(_config_data->core_path, 32);
-    memcpy(path+2, _config_data->core_path, core_path_len);
+    size_t core_path_len;
+    if (_config_data->core_path[0] == '/') {
+        core_path_len = strnlen(_config_data->core_path, 32);
+        memcpy(path+2, _config_data->core_path, core_path_len);
+    } else {
+        core_path_len = strnlen(DEFAULT_CORE_PATH, 32);
+        memcpy(path+2, DEFAULT_CORE_PATH, core_path_len);
+    }
     path[core_path_len+2] = '/';
     strcat(path+core_path_len+3, FILENAME);
     _set_postcode(16);
