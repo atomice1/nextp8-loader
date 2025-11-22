@@ -20,7 +20,7 @@
 
 #define LOAD_ADDRESS 0x20000
 #define BLOCK_SIZE 4096
-#define FILENAME "0:/nextp8/nextp8.bin"
+#define FILENAME "nextp8.bin"
 
 #define PROGRESS_BAR_WIDTH (_SCREEN_WIDTH * 3 / 4)
 #define PROGRESS_BAR_HEIGHT 16
@@ -151,12 +151,22 @@ int main(void)
     memcpy((char *) new_config_data, (char *) _CONFIG_BASE_ROM, 256);
 
     _set_postcode(15);
-    int fd = open(FILENAME, O_RDONLY);
+    char path[64];
+    memcpy(path, "0:", 2);
+    size_t core_path_len = strnlen(_config_data->core_path, 32);
+    memcpy(path+2, _config_data->core_path, core_path_len);
+    path[core_path_len+2] = '/';
+    strcat(path+core_path_len+3, FILENAME);
+    _set_postcode(16);
+    write(STDOUT_FILENO, path, strlen(path));
+    write(STDOUT_FILENO, "\n", 1);
+
+    int fd = open(path, O_RDONLY);
     if (fd == -1) {
         report_error();
         return 1;
     }
-    _set_postcode(16);
+    _set_postcode(17);
     off_t size = lseek(fd, 0, SEEK_END);
     if (size == -1) {
         report_error();
@@ -187,7 +197,7 @@ int main(void)
             last_progress = progress;
         }
     }
-    _set_postcode(17);
+    _set_postcode(18);
     close(fd);
 
     if (*(uint32_t *)LOAD_ADDRESS == 0) {
@@ -196,9 +206,9 @@ int main(void)
     }
 
     _clear_screen(_DARK_BLUE);
-    _set_postcode(18);
-    _flip();
     _set_postcode(19);
+    _flip();
+    _set_postcode(20);
 
     struct _loader_data *loader_data = (struct _loader_data *) (new_stack + 256);
     loader_data->magic = LOADER_MAGIC;
@@ -206,7 +216,7 @@ int main(void)
     loader_data->loader_timestamp = loader_timestamp;
     loader_data->entry_point = LOAD_ADDRESS;
 
-    _set_postcode(20);
+    _set_postcode(21);
     __asm__("move.l %0,%%sp\n\t"
             "jmp (%1)"
             :
