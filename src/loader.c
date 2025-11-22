@@ -89,41 +89,81 @@ static void report_error(void)
     _fatal_error("unknown error");
 }
 
+static uintptr_t memtop = 0;
+
+static void detect_memtop(void)
+{
+    for (unsigned i=1;i<8;++i) {
+        for (unsigned j=1;j<=i;++j) {
+            uint16_t *p = ((uint16_t *) ((uintptr_t)j << 20)) - 1;
+            uint16_t pat = 0x55555555 ^ j;
+            *p = 0;
+            *p = pat;
+        }
+        for (unsigned j=1;j<=i;++j) {
+            uint16_t *p = ((uint16_t *) ((uintptr_t)j << 20)) - 1;
+            uint16_t pat = 0x55555555 ^ j;
+            if (*p != pat)
+                return;
+            *p = 0;
+        }
+        memtop = (uintptr_t) i << 20;
+    }
+}
+
 int main(void)
 {
-    char *load_ptr = (char *)LOAD_ADDRESS;
+    _set_postcode(10);
     uint32_t hw_timestamp = *(uint32_t *)_BUILD_TIMESTAMP_HI;
     uint32_t hw_version = *(uint32_t *)_HW_VERSION_HI;
     if (_EXTRACT_API(hw_version) != HW_API_VERSION)
         _fatal_error("Incompatible hardware version");
-    _set_postcode(10);
+    _set_postcode(11);
+    detect_memtop();
+    _set_postcode(12);
     _clear_screen(_DARK_BLUE);
     draw_logo(LOGO_LEFT, LOGO_TOP);
     draw_rect(PROGRESS_BAR_LEFT,
               PROGRESS_BAR_TOP,
               PROGRESS_BAR_WIDTH,
               PROGRESS_BAR_HEIGHT);
+    char ram_string[10];
     char hw_version_string[50];
     char bsp_version_string[50];
     char loader_version_string[50];
+    unsigned ram_mb = memtop >> 20;
+    strcpy(ram_string, "RAM 0 MB");
+    ram_string[4] = ram_mb + '0';
     _format_version(hw_version_string, sizeof(hw_version_string), "HW", hw_version, hw_timestamp);
     _format_version(bsp_version_string, sizeof(bsp_version_string), "BSP", _bsp_version, _bsp_timestamp);
     _format_version(loader_version_string, sizeof(loader_version_string), "Loader", loader_version, loader_timestamp);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 4, ram_string);
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 3, hw_version_string);
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 2, bsp_version_string);
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 1, loader_version_string);
+    _set_postcode(13);
     _flip();
+    _set_postcode(14);
+
+    /* Copy the config data to the new location before we write over it. */
+    char *new_stack = (char *) memtop - 512;
+    struct _config_data *new_config_data = (struct _config_data *) new_stack;
+    memcpy((char *) new_config_data, (char *) _CONFIG_BASE_ROM, 256);
+
+    _set_postcode(15);
     int fd = open(FILENAME, O_RDONLY);
     if (fd == -1) {
         report_error();
         return 1;
     }
+    _set_postcode(16);
     off_t size = lseek(fd, 0, SEEK_END);
     if (size == -1) {
         report_error();
         return 1;
     }
     lseek(fd, 0, SEEK_SET);
+    char *load_ptr = (char *)LOAD_ADDRESS;
     size_t total_read = 0;
     int last_progress = 0;
     for (;;) {
@@ -147,19 +187,29 @@ int main(void)
             last_progress = progress;
         }
     }
+    _set_postcode(17);
+    close(fd);
+
     if (*(uint32_t *)LOAD_ADDRESS == 0) {
         _fatal_error("invalid file contents");
         return 1;
     }
+
     _clear_screen(_DARK_BLUE);
+    _set_postcode(18);
     _flip();
-    memcpy((char *) _CONFIG_BASE_RAM, (char *) _CONFIG_BASE_ROM, 256);
-    struct _loader_data *data = (struct _loader_data *) _LOADER_DATA;
-    data->loader_version = loader_version;
-    data->loader_timestamp = loader_timestamp;
-    data->entry_point = LOAD_ADDRESS;
-    __asm__("jmp (%0)"
+    _set_postcode(19);
+
+    struct _loader_data *loader_data = (struct _loader_data *) (new_stack + 256);
+    loader_data->magic = LOADER_MAGIC;
+    loader_data->loader_version = loader_version;
+    loader_data->loader_timestamp = loader_timestamp;
+    loader_data->entry_point = LOAD_ADDRESS;
+
+    _set_postcode(20);
+    __asm__("move.l %0,%%sp\n\t"
+            "jmp (%1)"
             :
-            : "a" (LOAD_ADDRESS));
+            : "r" (new_stack), "a" (LOAD_ADDRESS));
     return 1;
 }
