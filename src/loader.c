@@ -114,14 +114,14 @@ static void detect_memtop(void)
 
 int main(void)
 {
-    _set_postcode(10);
+    _set_postcode(11);
     uint32_t hw_timestamp = *(uint32_t *)_BUILD_TIMESTAMP_HI;
     uint32_t hw_version = *(uint32_t *)_HW_VERSION_HI;
     if (_EXTRACT_API(hw_version) != HW_API_VERSION)
         _fatal_error("Incompatible hardware version");
-    _set_postcode(11);
-    detect_memtop();
     _set_postcode(12);
+    detect_memtop();
+    _set_postcode(13);
     _clear_screen(_DARK_BLUE);
     draw_logo(LOGO_LEFT, LOGO_TOP);
     draw_rect(PROGRESS_BAR_LEFT,
@@ -142,16 +142,16 @@ int main(void)
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 3, hw_version_string);
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 2, bsp_version_string);
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 1, loader_version_string);
-    _set_postcode(13);
-    _flip();
     _set_postcode(14);
+    _flip();
+    _set_postcode(15);
 
     /* Copy the config data to the new location before we write over it. */
     char *new_stack = (char *) memtop - 512;
     struct _config_data *new_config_data = (struct _config_data *) new_stack;
     memcpy((char *) new_config_data, (char *) _CONFIG_BASE_ROM, 256);
 
-    _set_postcode(15);
+    _set_postcode(16);
     char path[64];
     memcpy(path, "0:", 2);
     size_t core_path_len;
@@ -164,16 +164,17 @@ int main(void)
     }
     path[core_path_len+2] = '/';
     strcat(path+core_path_len+3, FILENAME);
-    _set_postcode(16);
+    _set_postcode(17);
     write(STDOUT_FILENO, path, strlen(path));
     write(STDOUT_FILENO, "\n", 1);
+    _set_postcode(18);
 
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
         report_error();
         return 1;
     }
-    _set_postcode(17);
+    _set_postcode(19);
     off_t size = lseek(fd, 0, SEEK_END);
     if (size == -1) {
         report_error();
@@ -204,7 +205,7 @@ int main(void)
             last_progress = progress;
         }
     }
-    _set_postcode(18);
+    _set_postcode(20);
     close(fd);
 
     if (*(uint32_t *)LOAD_ADDRESS == 0) {
@@ -213,9 +214,9 @@ int main(void)
     }
 
     _clear_screen(_DARK_BLUE);
-    _set_postcode(19);
+    _set_postcode(21);
     _flip();
-    _set_postcode(20);
+    _set_postcode(22);
 
     struct _loader_data *loader_data = (struct _loader_data *) (new_stack + 256);
     loader_data->magic = LOADER_MAGIC;
@@ -223,7 +224,7 @@ int main(void)
     loader_data->loader_timestamp = loader_timestamp;
     loader_data->entry_point = LOAD_ADDRESS;
 
-    _set_postcode(21);
+    _set_postcode(23);
     __asm__("move.l %0,%%sp\n\t"
             "jmp (%1)"
             :
