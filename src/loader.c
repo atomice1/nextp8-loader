@@ -223,6 +223,7 @@ int main(void)
     loader_data->loader_version = loader_version;
     loader_data->loader_timestamp = loader_timestamp;
     loader_data->entry_point = LOAD_ADDRESS;
+    loader_data->reset_type = *(volatile uint8_t *)_RESET_TYPE;
 
     _set_postcode(23);
     __asm__("move.l %0,%%sp\n\t"
