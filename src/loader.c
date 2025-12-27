@@ -112,7 +112,7 @@ static void detect_memtop(void)
     }
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     _set_postcode(11);
     uint32_t hw_timestamp = *(uint32_t *)_BUILD_TIMESTAMP_HI;
@@ -152,18 +152,44 @@ int main(void)
     memcpy((char *) new_config_data, (char *) _CONFIG_BASE_ROM, 256);
 
     _set_postcode(16);
-    char path[64];
-    memcpy(path, "0:", 2);
-    size_t core_path_len;
-    if (_config_data->core_path[0] == '/') {
-        core_path_len = strnlen(_config_data->core_path, 32);
-        memcpy(path+2, _config_data->core_path, core_path_len);
+
+    /* Parse loader arguments and separate from application arguments */
+    char path[128];
+    int app_arg_start = 1;
+
+    if (argc > 2 && strcmp(argv[1], "--loader-image") == 0) {
+        if (argv[2][1] == ':') {
+            strncpy(path, argv[2], sizeof(path) - 1);
+        } else {
+            memcpy(path, "0:", 2);
+            strncpy(path + 2, argv[2], sizeof(path) - 3);
+        }
+        path[sizeof(path) - 1] = '\0';
+        app_arg_start = 3;
     } else {
-        core_path_len = strnlen(DEFAULT_CORE_PATH, 32);
-        memcpy(path+2, DEFAULT_CORE_PATH, core_path_len);
+        memcpy(path, "0:", 2);
+        size_t core_path_len;
+        if (_config_data->core_path[0] == '/') {
+            core_path_len = strnlen(_config_data->core_path, 32);
+            memcpy(path+2, _config_data->core_path, core_path_len);
+        } else {
+            core_path_len = strnlen(DEFAULT_CORE_PATH, 32);
+            memcpy(path+2, DEFAULT_CORE_PATH, core_path_len);
+        }
+        path[core_path_len+2] = '/';
+        strcat(path+core_path_len+3, FILENAME);
     }
-    path[core_path_len+2] = '/';
-    strcat(path+core_path_len+3, FILENAME);
+
+    memset(new_config_data->cmdline, 0, sizeof(new_config_data->cmdline));
+    char *cmdline = new_config_data->cmdline;
+    for (int i = app_arg_start; i < argc; i++) {
+        size_t len = strlen(argv[i]);
+        memcpy(cmdline, argv[i], len);
+        cmdline += len;
+        *cmdline = '\0';
+        cmdline++;
+    }
+
     _set_postcode(17);
     write(STDOUT_FILENO, path, strlen(path));
     write(STDOUT_FILENO, "\n", 1);
@@ -224,6 +250,8 @@ int main(void)
     loader_data->loader_timestamp = loader_timestamp;
     loader_data->entry_point = LOAD_ADDRESS;
     loader_data->reset_type = *(volatile uint8_t *)_RESET_TYPE;
+    strncpy(loader_data->loaded_path, path, sizeof(loader_data->loaded_path) - 1);
+    loader_data->loaded_path[sizeof(loader_data->loaded_path) - 1] = '\0';
 
     _set_postcode(23);
     __asm__("move.l %0,%%sp\n\t"
