@@ -131,20 +131,20 @@ int main(int argc, char **argv)
               PROGRESS_BAR_TOP,
               PROGRESS_BAR_WIDTH,
               PROGRESS_BAR_HEIGHT);
-    char ram_string[10];
+    char ram_string[12];
     char hw_version_string[50];
     char bsp_version_string[50];
     char loader_version_string[50];
     unsigned ram_mb = memtop >> 20;
-    strcpy(ram_string, "RAM 0 MB");
-    ram_string[4] = ram_mb + '0';
-    _format_version(hw_version_string, sizeof(hw_version_string), "HW", hw_version, hw_timestamp);
-    _format_version(bsp_version_string, sizeof(bsp_version_string), "BSP", _bsp_version, _bsp_timestamp);
-    _format_version(loader_version_string, sizeof(loader_version_string), "Loader", loader_version, loader_timestamp);
-    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 4, ram_string);
-    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 3, hw_version_string);
-    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 2, bsp_version_string);
-    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 1, loader_version_string);
+    strcpy(ram_string, "RAM    0 MB");
+    ram_string[7] = ram_mb + '0';
+    _format_version(hw_version_string, sizeof(hw_version_string), "HW    ", hw_version, hw_timestamp);
+    _format_version(bsp_version_string, sizeof(bsp_version_string), "BSP   ", _bsp_version, _bsp_timestamp);
+    _format_version(loader_version_string, sizeof(loader_version_string), "LOADER", loader_version, loader_timestamp);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 4, hw_version_string);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 3, bsp_version_string);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 2, loader_version_string);
+    _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 1, ram_string);
     _set_postcode(14);
     _flip();
     _set_postcode(15);
@@ -252,6 +252,7 @@ int main(int argc, char **argv)
     loader_data->loader_version = loader_version;
     loader_data->loader_timestamp = loader_timestamp;
     loader_data->entry_point = LOAD_ADDRESS;
+    loader_data->memtop = (uintptr_t) memtop;
     loader_data->reset_type = *(volatile uint8_t *)_RESET_TYPE;
     strncpy(loader_data->loaded_path, path, sizeof(loader_data->loaded_path) - 1);
     loader_data->loaded_path[sizeof(loader_data->loaded_path) - 1] = '\0';
