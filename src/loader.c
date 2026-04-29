@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include "mmio.h"
 #include "timestamp_macros.h"
 #include "version_macros.h"
 
@@ -145,8 +146,8 @@ int main(int argc, char **argv)
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 3, bsp_version_string);
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 2, loader_version_string);
     _display_string(0, _SCREEN_HEIGHT - _FONT_LINE_HEIGHT * 1, ram_string);
-    _set_postcode(14);
-    _flip();
+    int vfrontreq = 1 - MMIO_REG8(_VFRONT);;
+    MMIO_REG8(_VFRONTREQ) = vfrontreq;
     _set_postcode(15);
 
     /* Copy the config data to the new location before we write over it. */
@@ -176,7 +177,7 @@ int main(int argc, char **argv)
             core_path_len = strnlen(_config_data->core_path, 32);
             memcpy(path+2, _config_data->core_path, core_path_len);
         } else {
-            core_path_len = strnlen(DEFAULT_CORE_PATH, 32);
+            core_path_len = strnlen(DEFAULT_CORE_PATH, 17);
             memcpy(path+2, DEFAULT_CORE_PATH, core_path_len);
         }
         path[core_path_len+2] = '/';
@@ -225,13 +226,17 @@ int main(int argc, char **argv)
         total_read += bytes_read;
         int progress = (total_read * (PROGRESS_BAR_WIDTH - 4)) / size;
         if (progress > last_progress) {
-            _copy_front_to_back();
-            fill_rect(PROGRESS_BAR_LEFT+2+last_progress,
-                      PROGRESS_BAR_TOP + 2,
-                      progress - last_progress,
-                      PROGRESS_BAR_HEIGHT - 4);
-            _flip();
-            last_progress = progress;
+            int vfront = MMIO_REG8(_VFRONT);
+            if (vfront == vfrontreq) {
+                _copy_front_to_back();
+                fill_rect(PROGRESS_BAR_LEFT+2+last_progress,
+                          PROGRESS_BAR_TOP + 2,
+                          progress - last_progress,
+                          PROGRESS_BAR_HEIGHT - 4);
+                vfrontreq = 1 - vfront;
+                MMIO_REG8(_VFRONTREQ) = vfrontreq;
+                last_progress = progress;
+            }
         }
     }
     _set_postcode(20);
