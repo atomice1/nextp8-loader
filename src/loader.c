@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 {
     _set_postcode(11);
     // This line causes NextPI to redirect UART output to the Pi console
-    _uart_write("cat >/dev/tty0\r\n", 16);
+    _uart_write("\x03\x03cat >/dev/tty0\r\n", 16);
     _uart_write("NextP8 Loader\r\n", 15);
     uint32_t hw_timestamp = *(uint32_t *)_BUILD_TIMESTAMP_HI;
     uint32_t hw_version = *(uint32_t *)_HW_VERSION_HI;
