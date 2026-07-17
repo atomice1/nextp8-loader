@@ -125,6 +125,8 @@ int main(int argc, char **argv)
         _fatal_error("Incompatible hardware version");
     _set_postcode(12);
     detect_memtop();
+    if (memtop == 0)
+        _fatal_error("Memory detection failed");
     _set_postcode(13);
     _clear_screen(_DARK_BLUE);
     draw_logo(LOGO_LEFT, LOGO_TOP);
@@ -160,7 +162,6 @@ int main(int argc, char **argv)
     /* Parse loader arguments and separate from application arguments */
     char path[128];
     int app_arg_start = 1;
-
     if (argc > 2 && strcmp(argv[1], "--loader-image") == 0) {
         if (argv[2][1] == ':') {
             strncpy(path, argv[2], sizeof(path) - 1);
@@ -181,7 +182,7 @@ int main(int argc, char **argv)
             memcpy(path+2, DEFAULT_CORE_PATH, core_path_len);
         }
         path[core_path_len+2] = '/';
-        strcat(path+core_path_len+3, FILENAME);
+        strcpy(path+core_path_len+3, FILENAME);
     }
 
     memset(new_config_data->cmdline, 0, sizeof(new_config_data->cmdline));
@@ -208,6 +209,11 @@ int main(int argc, char **argv)
     off_t size = lseek(fd, 0, SEEK_END);
     if (size == -1) {
         report_error();
+        return 1;
+    }
+    /* Check for empty file */
+    if (size == 0) {
+        _fatal_error("file is empty");
         return 1;
     }
     lseek(fd, 0, SEEK_SET);
