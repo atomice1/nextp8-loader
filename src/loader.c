@@ -196,15 +196,26 @@ int main(int argc, char **argv)
     }
 
     _set_postcode(17);
-    write(STDOUT_FILENO, path, strlen(path));
-    write(STDOUT_FILENO, "\n", 1);
-    _set_postcode(18);
 
+    _ignore_sdcard_errors = 1;
     int fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        _set_postcode(18);
+        // Core directory not found on SD card 0 -- ty 1 instead.
+        path[0] = '0';
+        fd = open(path, O_RDONLY);
+        if (fd == -1) {
+            _ignore_sdcard_errors = 0;
+            fd = open(path, O_RDONLY);
+        }
+    }
+    _ignore_sdcard_errors = 0;
     if (fd == -1) {
         report_error();
         return 1;
     }
+    write(STDOUT_FILENO, path, strlen(path));
+    write(STDOUT_FILENO, "\n", 1);
     _set_postcode(19);
     off_t size = lseek(fd, 0, SEEK_END);
     if (size == -1) {
