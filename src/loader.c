@@ -19,7 +19,7 @@
 #define MINOR_VERSION  1
 #define PATCH_VERSION  0
 
-#define LOAD_ADDRESS 0x20000
+#define LOAD_ADDRESS 0xC000
 #define BLOCK_SIZE 4096
 #define DEFAULT_CORE_PATH "/machines/NEXTP8"
 #define FILENAME "nextp8.bin"
