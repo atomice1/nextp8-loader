@@ -200,12 +200,16 @@ int main(int argc, char **argv)
     _ignore_sdcard_errors = 1;
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
+        int sdcard0_errno = errno;
         _set_postcode(18);
-        // Core directory not found on SD card 0 -- ty 1 instead.
-        path[0] = '0';
+        // Core directory not found on SD card 0 -- try 1 instead.
+        path[0] = '1';
         fd = open(path, O_RDONLY);
         if (fd == -1) {
+            int sdcard1_errno = errno;
             _ignore_sdcard_errors = 0;
+            if (!(sdcard0_errno != ENOENT && sdcard1_errno == ENOENT))
+                path[0] = '0';
             fd = open(path, O_RDONLY);
         }
     }
